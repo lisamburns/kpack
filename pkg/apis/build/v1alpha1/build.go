@@ -116,7 +116,7 @@ func (b *Build) PodName() string {
 
 func (b *Build) MetadataReady(pod *corev1.Pod) bool {
 	return !b.Status.GetCondition(corev1alpha1.ConditionSucceeded).IsTrue() &&
-		pod.Status.Phase == "Succeeded"
+		(pod.Status.Phase == "Succeeded" || pod.Status.Phase == "Running")
 }
 
 func (b *Build) Finished() bool {

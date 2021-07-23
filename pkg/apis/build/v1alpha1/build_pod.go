@@ -194,8 +194,33 @@ func (b *Build) BuildPod(images BuildPodImages, secrets []corev1.Secret, taints 
 						Name:            "completion",
 						Image:           images.completion(config.OS),
 						ImagePullPolicy: corev1.PullIfNotPresent,
-						Resources:       b.Spec.Resources,
-					})
+						Env: []corev1.EnvVar{
+							{
+								Name:  platformAPIEnvVar,
+								Value: platformAPI,
+							},
+						},
+					}, ifWindows(config.OS, addNetworkWaitLauncherVolume(), useNetworkWaitLauncher(dnsProbeHost))...)
+					step(corev1.Container{
+						Name:    "rebuild",
+						Image:   builderImage,
+						Command: []string{"sleep"},
+						Args: []string{
+							"infinity",
+						},
+						VolumeMounts: append([]corev1.VolumeMount{
+							layersVolume,
+							platformVolume,
+							workspaceVolume,
+						}, bindingVolumeMounts...),
+						ImagePullPolicy: corev1.PullIfNotPresent,
+						Env: []corev1.EnvVar{
+							{
+								Name:  platformAPIEnvVar,
+								Value: platformAPI,
+							},
+						},
+					}, ifWindows(config.OS, addNetworkWaitLauncherVolume(), useNetworkWaitLauncher(dnsProbeHost))...)
 					return
 				}
 
@@ -217,7 +242,34 @@ func (b *Build) BuildPod(images BuildPodImages, secrets []corev1.Secret, taints 
 						reportVolume,
 					),
 					ImagePullPolicy: corev1.PullIfNotPresent,
+					Env: []corev1.EnvVar{
+						{
+							Name:  platformAPIEnvVar,
+							Value: platformAPI,
+						},
+					},
 				}, ifWindows(config.OS, addNetworkWaitLauncherVolume(), useNetworkWaitLauncher(dnsProbeHost))...)
+				step(corev1.Container{
+					Name:    "rebuild",
+					Image:   builderImage,
+					Command: []string{"sleep"},
+					Args: []string{
+						"infinity",
+					},
+					VolumeMounts: append([]corev1.VolumeMount{
+						layersVolume,
+						platformVolume,
+						workspaceVolume,
+					}, bindingVolumeMounts...),
+					ImagePullPolicy: corev1.PullIfNotPresent,
+					Env: []corev1.EnvVar{
+						{
+							Name:  platformAPIEnvVar,
+							Value: platformAPI,
+						},
+					},
+				}, ifWindows(config.OS, addNetworkWaitLauncherVolume(), useNetworkWaitLauncher(dnsProbeHost))...)
+
 			}),
 			SecurityContext: podSecurityContext(config),
 			InitContainers: steps(func(step func(corev1.Container, ...stepModifier)) {
@@ -428,6 +480,7 @@ func (b *Build) BuildPod(images BuildPodImages, secrets []corev1.Secret, taints 
 			Tolerations: tolerations(taints),
 			Volumes: append(append(
 				append(secretVolumes, b.cacheVolume(config.OS)...),
+				//todo
 				corev1.Volume{
 					Name: layersDirName,
 					VolumeSource: corev1.VolumeSource{
@@ -825,7 +878,7 @@ func a(args ...string) []string {
 }
 
 func steps(f func(step func(corev1.Container, ...stepModifier))) []corev1.Container {
-	containers := make([]corev1.Container, 0, 7)
+	containers := make([]corev1.Container, 0, 8)
 
 	f(func(container corev1.Container, modifiers ...stepModifier) {
 		for _, m := range modifiers {

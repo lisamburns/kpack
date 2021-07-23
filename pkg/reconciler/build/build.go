@@ -148,6 +148,14 @@ func conditionForPod(pod *corev1.Pod) corev1alpha1.Conditions {
 				LastTransitionTime: corev1alpha1.VolatileTime{Inner: metav1.Now()},
 			},
 		}
+	case corev1.PodRunning:
+		return corev1alpha1.Conditions{
+			{
+				Type:               corev1alpha1.ConditionSucceeded,
+				Status:             corev1.ConditionTrue,
+				LastTransitionTime: corev1alpha1.VolatileTime{Inner: metav1.Now()},
+			},
+		}
 	case corev1.PodFailed:
 		return corev1alpha1.Conditions{
 			{
